@@ -1,0 +1,29 @@
+<<<<<<< HEAD
+# README
+
+This README would normally document whatever steps are necessary to get the
+application up and running.
+
+Things you may want to cover:
+
+* Ruby version
+
+* System dependencies
+
+* Configuration
+
+* Database creation
+
+* Database initialization
+
+* How to run the test suite
+
+* Services (job queues, cache servers, search engines, etc.)
+
+* Deployment instructions
+
+* ...
+=======
+# viky_blog
+A blog application made for fun purpose.
+>>>>>>> ed9af98d74d9ffbb0c4e93c02bb19805d3d5ccd2
