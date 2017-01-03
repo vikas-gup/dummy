@@ -9,7 +9,12 @@ Router.map ->
   @route 'passwordedit', path: '/auth/password/edit'
   @route 'sign_in'
   @route 'sign_up'
-  @route 'home'
+  @route 'home', ()->
+    @route 'post', ()->
+      @route 'new'
+      @route 'edit'
+    @route 'profile'
+    @route 'my-profile'
   Router.reopen location: 'history'
 
 `export default Router`

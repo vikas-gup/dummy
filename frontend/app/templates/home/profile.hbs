@@ -1,0 +1,64 @@
+<div class="col-md-4">
+  {{ember-selectize
+  content=users
+  optionValuePath="content.name"
+  optionLabelPath="content.name"
+  selection=selectedUser
+  placeholder="Select User" }}
+</div>
+
+<div class="row main col-md-12">
+    <div class="panel-heading">
+        <div class="panel-title text-center">
+            <h1 class="title">{{selectedUser.name}}'s Profile</h1>
+            <hr />
+        </div>
+    </div>
+    <div class="main-login main-center">
+        <form class="form-horizontal">
+            <div class="control-group">
+                <label class="control-label">Name</label>
+                <div class="controls">
+                  {{selectedUser.name}}
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Email</label>
+                <div class="controls">
+                  {{selectedUser.email}}
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Username</label>
+                <div class="controls">
+                  {{selectedUser.username}}
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Contact Number</label>
+                <div class="controls">
+                  {{selectedUser.contactNumber}}
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="panel-heading">
+        <div class="panel-title text-center">
+            <h1 class="title">{{selectedUser.name}}'s Posts</h1>
+            <hr />
+        </div>
+    </div>
+  {{#each selectedUser.posts as |post|}}
+      <div class="card">
+          <div class="card-block">
+              <h4 class="card-title"><b>Title: </b>{{post.title}}</h4>
+              <p class="card-text"><b>Description: </b>{{post.description}}</p>
+              <p class="card-text"><b>Created At: </b>{{post.createdAt}}</p>
+          </div>
+      </div>
+  {{/each}}
+</div>

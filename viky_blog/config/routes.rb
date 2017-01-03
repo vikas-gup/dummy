@@ -16,5 +16,8 @@ Rails.application.routes.draw do
 		post 'sign_in' => 'users/sessions#create'
 	end
   # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
+	resources :users
+	resources :posts
+	get 'looged_in_user' => 'users#looged_in_user'
 	get '/*path' => 'home#index'
 end

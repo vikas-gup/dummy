@@ -9,7 +9,15 @@ before_action :configure_account_update_params, only: [:update]
 
   # POST /resource
   def create
-    super
+    user = User.new(user_params)
+    if user.save
+      sign_in(:user, user)
+      if current_user
+        render json: current_user, status: :created
+      end
+    else
+      render json: {errors: "Could not create user"}, status: :not_acceptable
+    end
   end
 
   # GET /resource/edit
@@ -46,6 +54,11 @@ before_action :configure_account_update_params, only: [:update]
   # If you have extra params to permit, append them to the sanitizer.
   def configure_account_update_params
     devise_parameter_sanitizer.permit(:account_update, keys: [:email, :firstname, :lastname, :username, :contact_number, :password, :password_confirmation])
+  end
+
+  private
+  def user_params
+    params[:user].permit(:email, :firstname, :lastname, :username, :contact_number, :password)
   end
 
   # The path used after sign up.

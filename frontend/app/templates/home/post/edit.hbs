@@ -1,0 +1,14 @@
+<div class="form-group">
+    <label for="confirm" class="cols-sm-2 control-label">New Post</label>
+    <div class="cols-sm-10">
+        <div class="input-group">
+            <span class="input-group-addon"><i class="fa fa-lock fa-lg" aria-hidden="true"></i></span>
+          {{input type="text" class="form-control" name="title" id="title"  placeholder="Title" value=post.title}}
+        </div>
+        <div class="input-group">
+            <span class="input-group-addon"><i class="fa fa-lock fa-lg" aria-hidden="true"></i></span>
+          {{input type="text" class="form-control" name="description" id="description"  placeholder="Description" value=post.description}}
+        </div>
+    </div>
+    <button type="button" class="btn btn-primary btn-lg login-button" {{action 'updatePost' post}}>Update</button>
+</div>

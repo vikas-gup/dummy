@@ -19,6 +19,8 @@ class Users::SessionsController < Devise::SessionsController
 				if current_user
 					render json: {:message => "Sign in successful", :current_user => current_user}
 				end
+			else
+				render json: {:message => "Invalid Password"}
 			end
 		end
   end

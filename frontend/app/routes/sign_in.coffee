@@ -1,6 +1,12 @@
 `import Ember from 'ember'`
 
 signInRoute = Ember.Route.extend
+  beforeModel: ->
+    if Ember.isPresent(@get('session.user'))
+      @transitionTo('home')
+    else
+      @transitionTo('sign_in')
+      
   model: ->
     []
 

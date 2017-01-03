@@ -1,6 +1,12 @@
 `import Ember from 'ember'`
 
 signUpRoute = Ember.Route.extend
+  beforeModel: ->
+    if Ember.isPresent(@get('session.user'))
+      @transitionTo('home')
+    else
+      @transitionTo('sign_up')
+
   model: ->
    []
 
@@ -15,12 +21,16 @@ signUpRoute = Ember.Route.extend
           lastname: @controller.get('lastname')
           email: @controller.get('email')
           contactNumber: @controller.get('contactNumber')
+          username: @controller.get('username')
           password: @controller.get('password')
           confirmPassword: @controller.get('confirmPassword')
         }
         userRec = @store.createRecord('user', userObj)
         userRec.save().then((response)=>
-          debugger
+          alert "User Created"
+          if Ember.isPresent(response)
+            @get('session').set('user', response)
+            @transitionTo('home')
         )
        else
         alert("Password do not match")
