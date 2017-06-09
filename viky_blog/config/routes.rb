@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  resources :secret_codes
 	root 'home#index'
 
 	devise_for :users, path: 'auth', controllers: {
@@ -13,11 +14,11 @@ Rails.application.routes.draw do
 		#get 'sign_in' => 'users/sessions#new'
 		#get 'sign_up' => 'users/registrations#new'
 		post 'users' => 'users/registrations#create'
-		post 'sign_in' => 'users/sessions#create'
+		post 'sign_in' => 'users/sessions#create'		
 	end
   # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
 	resources :users
-	resources :posts
+	post 'secret_code_create' => 'secret_codes#secret_code_create'
 	get 'looged_in_user' => 'users#looged_in_user'
 	get '/*path' => 'home#index'
 end

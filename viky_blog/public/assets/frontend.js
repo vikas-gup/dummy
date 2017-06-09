@@ -93,10 +93,10 @@ define('frontend/initializers/data-adapter', ['exports', 'ember'], function (exp
   exports['default'] = {
     name: 'data-adapter',
     before: 'store',
-    initialize: _ember['default'].K
+    initialize: function initialize() {}
   };
 });
-define('frontend/initializers/ember-data', ['exports', 'ember-data/setup-container', 'ember-data/-private/core'], function (exports, _emberDataSetupContainer, _emberDataPrivateCore) {
+define('frontend/initializers/ember-data', ['exports', 'ember-data/setup-container', 'ember-data/index'], function (exports, _emberDataSetupContainer, _emberDataIndex) {
 
   /*
   
@@ -193,7 +193,7 @@ define('frontend/initializers/injectStore', ['exports', 'ember'], function (expo
   exports['default'] = {
     name: 'injectStore',
     before: 'store',
-    initialize: _ember['default'].K
+    initialize: function initialize() {}
   };
 });
 define('frontend/initializers/session', ['exports'], function (exports) {
@@ -224,7 +224,7 @@ define('frontend/initializers/store', ['exports', 'ember'], function (exports, _
   exports['default'] = {
     name: 'store',
     after: 'ember-data',
-    initialize: _ember['default'].K
+    initialize: function initialize() {}
   };
 });
 define('frontend/initializers/transforms', ['exports', 'ember'], function (exports, _ember) {
@@ -239,7 +239,7 @@ define('frontend/initializers/transforms', ['exports', 'ember'], function (expor
   exports['default'] = {
     name: 'transforms',
     before: 'store',
-    initialize: _ember['default'].K
+    initialize: function initialize() {}
   };
 });
 define("frontend/instance-initializers/ember-data", ["exports", "ember-data/-private/instance-initializers/initialize-store-service"], function (exports, _emberDataPrivateInstanceInitializersInitializeStoreService) {
@@ -263,6 +263,19 @@ define('frontend/models/post', ['exports', 'ember-data'], function (exports, _em
 
   exports['default'] = postModel;
 });
+define('frontend/models/secret-code', ['exports', 'ember-data'], function (exports, _emberData) {
+  var secretCodeModel;
+
+  secretCodeModel = _emberData['default'].Model.extend({
+    name: _emberData['default'].attr('string'),
+    createdAt: _emberData['default'].attr('date'),
+    user: _emberData['default'].belongsTo('user', {
+      async: true
+    })
+  });
+
+  exports['default'] = secretCodeModel;
+});
 define('frontend/models/user', ['exports', 'ember-data'], function (exports, _emberData) {
   var userModel;
 
@@ -270,13 +283,10 @@ define('frontend/models/user', ['exports', 'ember-data'], function (exports, _em
     firstname: _emberData['default'].attr('string'),
     lastname: _emberData['default'].attr('string'),
     email: _emberData['default'].attr('string'),
-    contactNumber: _emberData['default'].attr('number'),
-    username: _emberData['default'].attr('string'),
     password: _emberData['default'].attr('string'),
     name: (function () {
       return this.get('firstname') + ' ' + this.get('lastname');
-    }).property('firstname', 'lastname'),
-    posts: _emberData['default'].hasMany('post')
+    }).property('firstname', 'lastname')
   });
 
   exports['default'] = userModel;
@@ -353,6 +363,13 @@ define('frontend/routes/home', ['exports', 'ember'], function (exports, _ember) 
         return this.transitionTo('sign_in');
       }
     },
+    model: function model() {
+      return this.store.findAll('secret-code');
+    },
+    setupController: function setupController(controller, model) {
+      controller.set('countList', [1, 10, 100]);
+      return controller.set('model', model);
+    },
     actions: {
       logOut: function logOut() {
         var that;
@@ -367,6 +384,21 @@ define('frontend/routes/home', ['exports', 'ember'], function (exports, _ember) 
               _this.get('session').set('user', null);
             }
             return _this.transitionTo('sign_in');
+          };
+        })(this));
+      },
+      createSecretCode: function createSecretCode() {
+        var count;
+        count = this.controller.get('selectedCount');
+        return $.ajax({
+          type: 'POST',
+          url: '/secret_code_create',
+          data: {
+            count: count
+          }
+        }).then((function (_this) {
+          return function (data) {
+            return alert("Created");
           };
         })(this));
       }
@@ -558,21 +590,21 @@ define('frontend/routes/sign_up', ['exports', 'ember'], function (exports, _embe
       }
     },
     model: function model() {
-      return [];
+      return this.store.query('secret-code', {
+        unutilized: true
+      });
     },
     setupController: function setupController(controller, model) {
-      return controller.set('model', model);
+      return controller.set('secretCodeList', model);
     },
     actions: {
       signup: function signup() {
         var userObj, userRec;
-        if (_ember['default'].isEqual(this.controller.get('password'), this.controller.get('confirmPassword'))) {
+        if (_ember['default'].isEqual(this.controller.get('password'), this.controller.get('confirmPassword')) && _ember['default'].isPresent(this.controller.get('selectedSecret'))) {
           userObj = {
             firstname: this.controller.get('firstname'),
             lastname: this.controller.get('lastname'),
             email: this.controller.get('email'),
-            contactNumber: this.controller.get('contactNumber'),
-            username: this.controller.get('username'),
             password: this.controller.get('password'),
             confirmPassword: this.controller.get('confirmPassword')
           };
@@ -582,6 +614,11 @@ define('frontend/routes/sign_up', ['exports', 'ember'], function (exports, _embe
               alert("User Created");
               if (_ember['default'].isPresent(response)) {
                 _this.get('session').set('user', response);
+                _this.store.findRecord('secret-code', _this.controller.get('selectedSecret.id')).then(function (secretCode) {
+                  secretCode.set('user', response);
+                  debugger;
+                  return secretCode.save();
+                });
                 return _this.transitionTo('home');
               }
             };
@@ -708,103 +745,56 @@ define("frontend/templates/home", ["exports"], function (exports) {
           "loc": {
             "source": null,
             "start": {
-              "line": 17,
-              "column": 20
+              "line": 53,
+              "column": 12
             },
             "end": {
-              "line": 17,
-              "column": 59
+              "line": 60,
+              "column": 12
             }
           },
           "moduleName": "frontend/templates/home.hbs"
         },
         isEmpty: false,
-        arity: 0,
+        arity: 1,
         cachedFragment: null,
         hasRendered: false,
         buildFragment: function buildFragment(dom) {
           var el0 = dom.createDocumentFragment();
-          var el1 = dom.createTextNode("Create Post");
+          var el1 = dom.createTextNode("                ");
+          dom.appendChild(el0, el1);
+          var el1 = dom.createElement("div");
+          dom.setAttribute(el1, "class", "full-row-height45 col-md-6 centered");
+          var el2 = dom.createTextNode("\n                  ");
+          dom.appendChild(el1, el2);
+          var el2 = dom.createComment("");
+          dom.appendChild(el1, el2);
+          var el2 = dom.createTextNode("\n                ");
+          dom.appendChild(el1, el2);
+          dom.appendChild(el0, el1);
+          var el1 = dom.createTextNode("\n                ");
+          dom.appendChild(el0, el1);
+          var el1 = dom.createElement("div");
+          dom.setAttribute(el1, "class", "full-row-height45 col-md-6 centered");
+          var el2 = dom.createTextNode("\n                  (");
+          dom.appendChild(el1, el2);
+          var el2 = dom.createComment("");
+          dom.appendChild(el1, el2);
+          var el2 = dom.createTextNode(")\n                ");
+          dom.appendChild(el1, el2);
+          dom.appendChild(el0, el1);
+          var el1 = dom.createTextNode("\n");
           dom.appendChild(el0, el1);
           return el0;
         },
-        buildRenderNodes: function buildRenderNodes() {
-          return [];
+        buildRenderNodes: function buildRenderNodes(dom, fragment, contextualElement) {
+          var morphs = new Array(2);
+          morphs[0] = dom.createMorphAt(dom.childAt(fragment, [1]), 1, 1);
+          morphs[1] = dom.createMorphAt(dom.childAt(fragment, [3]), 1, 1);
+          return morphs;
         },
-        statements: [],
-        locals: [],
-        templates: []
-      };
-    })();
-    var child2 = (function () {
-      return {
-        meta: {
-          "fragmentReason": false,
-          "revision": "Ember@2.5.1",
-          "loc": {
-            "source": null,
-            "start": {
-              "line": 18,
-              "column": 20
-            },
-            "end": {
-              "line": 18,
-              "column": 60
-            }
-          },
-          "moduleName": "frontend/templates/home.hbs"
-        },
-        isEmpty: false,
-        arity: 0,
-        cachedFragment: null,
-        hasRendered: false,
-        buildFragment: function buildFragment(dom) {
-          var el0 = dom.createDocumentFragment();
-          var el1 = dom.createTextNode("User Profiles");
-          dom.appendChild(el0, el1);
-          return el0;
-        },
-        buildRenderNodes: function buildRenderNodes() {
-          return [];
-        },
-        statements: [],
-        locals: [],
-        templates: []
-      };
-    })();
-    var child3 = (function () {
-      return {
-        meta: {
-          "fragmentReason": false,
-          "revision": "Ember@2.5.1",
-          "loc": {
-            "source": null,
-            "start": {
-              "line": 25,
-              "column": 28
-            },
-            "end": {
-              "line": 25,
-              "column": 68
-            }
-          },
-          "moduleName": "frontend/templates/home.hbs"
-        },
-        isEmpty: false,
-        arity: 0,
-        cachedFragment: null,
-        hasRendered: false,
-        buildFragment: function buildFragment(dom) {
-          var el0 = dom.createDocumentFragment();
-          var el1 = dom.createTextNode("My Profile");
-          dom.appendChild(el0, el1);
-          return el0;
-        },
-        buildRenderNodes: function buildRenderNodes() {
-          return [];
-        },
-        statements: [],
-        locals: [],
+        statements: [["content", "rec.name", ["loc", [null, [55, 18], [55, 30]]]], ["content", "rec.user.email", ["loc", [null, [58, 19], [58, 37]]]]],
+        locals: ["rec"],
         templates: []
       };
     })();
@@ -822,7 +812,7 @@ define("frontend/templates/home", ["exports"], function (exports) {
             "column": 0
           },
           "end": {
-            "line": 37,
+            "line": 66,
             "column": 10
           }
         },
@@ -907,25 +897,6 @@ define("frontend/templates/home", ["exports"], function (exports) {
         var el4 = dom.createTextNode("\n            ");
         dom.appendChild(el3, el4);
         var el4 = dom.createElement("ul");
-        dom.setAttribute(el4, "class", "nav navbar-nav");
-        var el5 = dom.createTextNode("\n                ");
-        dom.appendChild(el4, el5);
-        var el5 = dom.createElement("li");
-        var el6 = dom.createComment("");
-        dom.appendChild(el5, el6);
-        dom.appendChild(el4, el5);
-        var el5 = dom.createTextNode("\n                ");
-        dom.appendChild(el4, el5);
-        var el5 = dom.createElement("li");
-        var el6 = dom.createComment("");
-        dom.appendChild(el5, el6);
-        dom.appendChild(el4, el5);
-        var el5 = dom.createTextNode("\n            ");
-        dom.appendChild(el4, el5);
-        dom.appendChild(el3, el4);
-        var el4 = dom.createTextNode("\n\n            ");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createElement("ul");
         dom.setAttribute(el4, "class", "nav navbar-nav navbar-right");
         var el5 = dom.createTextNode("\n                ");
         dom.appendChild(el4, el5);
@@ -952,14 +923,6 @@ define("frontend/templates/home", ["exports"], function (exports) {
         dom.appendChild(el5, el6);
         var el6 = dom.createElement("ul");
         dom.setAttribute(el6, "class", "dropdown-menu");
-        var el7 = dom.createTextNode("\n                        ");
-        dom.appendChild(el6, el7);
-        var el7 = dom.createElement("li");
-        var el8 = dom.createComment("");
-        dom.appendChild(el7, el8);
-        var el8 = dom.createTextNode(" ");
-        dom.appendChild(el7, el8);
-        dom.appendChild(el6, el7);
         var el7 = dom.createTextNode("\n                        ");
         dom.appendChild(el6, el7);
         var el7 = dom.createElement("li");
@@ -993,11 +956,90 @@ define("frontend/templates/home", ["exports"], function (exports) {
         var el1 = dom.createTextNode("\n\n");
         dom.appendChild(el0, el1);
         var el1 = dom.createElement("div");
-        dom.setAttribute(el1, "class", "col-md-12");
-        var el2 = dom.createTextNode("\n    Hello!  This blog is designed for those of you like me, who oddly enough, love planning things!  Anything from concerts, to weddings, parties, and fundraisers have some of the same key elements, and are just as fun to create.  The blog will be geared to newbies hoping to learn some tips or experienced event planners looking to brush up on the theory.  Events and Everyday Catostrophes will use my experiences planning the University of Rhode Island Senior sendoff as well as working in the Programming Office of the university to provide (hopefully) entertaining anecdotes to help connect with skills and ideas to help you run your own events.\n");
+        dom.setAttribute(el1, "class", "col-md-4 noPadding mt20");
+        var el2 = dom.createTextNode("\n    ");
+        dom.appendChild(el1, el2);
+        var el2 = dom.createComment("");
+        dom.appendChild(el1, el2);
+        var el2 = dom.createTextNode("\n");
         dom.appendChild(el1, el2);
         dom.appendChild(el0, el1);
-        var el1 = dom.createTextNode("\n");
+        var el1 = dom.createTextNode("\n\n");
+        dom.appendChild(el0, el1);
+        var el1 = dom.createElement("div");
+        dom.setAttribute(el1, "class", "form-group col-md-3");
+        var el2 = dom.createTextNode("\n    ");
+        dom.appendChild(el1, el2);
+        var el2 = dom.createElement("button");
+        dom.setAttribute(el2, "type", "button");
+        dom.setAttribute(el2, "class", "btn btn-primary btn-lg btn-block login-button");
+        var el3 = dom.createTextNode("Create Secret Code");
+        dom.appendChild(el2, el3);
+        dom.appendChild(el1, el2);
+        var el2 = dom.createTextNode("\n");
+        dom.appendChild(el1, el2);
+        dom.appendChild(el0, el1);
+        var el1 = dom.createTextNode("\n\n");
+        dom.appendChild(el0, el1);
+        var el1 = dom.createElement("div");
+        dom.setAttribute(el1, "class", "col-md-12 noPadding mt20");
+        var el2 = dom.createTextNode("\n  ");
+        dom.appendChild(el1, el2);
+        var el2 = dom.createElement("div");
+        dom.setAttribute(el2, "class", "centered bold-text");
+        var el3 = dom.createComment("");
+        dom.appendChild(el2, el3);
+        dom.appendChild(el1, el2);
+        var el2 = dom.createTextNode("\n  ");
+        dom.appendChild(el1, el2);
+        var el2 = dom.createElement("div");
+        dom.setAttribute(el2, "class", "col-md-12 white-bg mt20");
+        var el3 = dom.createTextNode("\n    ");
+        dom.appendChild(el2, el3);
+        var el3 = dom.createElement("div");
+        dom.setAttribute(el3, "class", "row table-header-scorecard-pattern noMargin col-md-12");
+        var el4 = dom.createTextNode("\n        ");
+        dom.appendChild(el3, el4);
+        var el4 = dom.createElement("div");
+        dom.setAttribute(el4, "class", "col-md-6 full-row-height45 report-header centered");
+        var el5 = dom.createTextNode("\n            Secret Code\n        ");
+        dom.appendChild(el4, el5);
+        dom.appendChild(el3, el4);
+        var el4 = dom.createTextNode("\n        ");
+        dom.appendChild(el3, el4);
+        var el4 = dom.createElement("div");
+        dom.setAttribute(el4, "class", "col-md-6 full-row-height45 report-header centered");
+        var el5 = dom.createTextNode("\n            Email\n        ");
+        dom.appendChild(el4, el5);
+        dom.appendChild(el3, el4);
+        var el4 = dom.createTextNode("\n    ");
+        dom.appendChild(el3, el4);
+        dom.appendChild(el2, el3);
+        var el3 = dom.createTextNode("\n\n    ");
+        dom.appendChild(el2, el3);
+        var el3 = dom.createElement("div");
+        dom.setAttribute(el3, "class", "noPadding");
+        var el4 = dom.createTextNode("\n        ");
+        dom.appendChild(el3, el4);
+        var el4 = dom.createElement("div");
+        dom.setAttribute(el4, "class", "col-md-12 row noMargin hover bt1");
+        var el5 = dom.createTextNode("\n");
+        dom.appendChild(el4, el5);
+        var el5 = dom.createComment("");
+        dom.appendChild(el4, el5);
+        var el5 = dom.createTextNode("        ");
+        dom.appendChild(el4, el5);
+        dom.appendChild(el3, el4);
+        var el4 = dom.createTextNode("\n    ");
+        dom.appendChild(el3, el4);
+        dom.appendChild(el2, el3);
+        var el3 = dom.createTextNode("\n  ");
+        dom.appendChild(el2, el3);
+        dom.appendChild(el1, el2);
+        var el2 = dom.createTextNode("\n");
+        dom.appendChild(el1, el2);
+        dom.appendChild(el0, el1);
+        var el1 = dom.createTextNode("\n\n");
         dom.appendChild(el0, el1);
         var el1 = dom.createComment("");
         dom.appendChild(el0, el1);
@@ -1005,25 +1047,25 @@ define("frontend/templates/home", ["exports"], function (exports) {
       },
       buildRenderNodes: function buildRenderNodes(dom, fragment, contextualElement) {
         var element0 = dom.childAt(fragment, [0, 1]);
-        var element1 = dom.childAt(element0, [7]);
-        var element2 = dom.childAt(element1, [1]);
-        var element3 = dom.childAt(element1, [3, 1]);
-        var element4 = dom.childAt(element3, [3]);
-        var element5 = dom.childAt(element4, [3, 0]);
-        var morphs = new Array(7);
+        var element1 = dom.childAt(element0, [7, 1, 1]);
+        var element2 = dom.childAt(element1, [3, 1, 0]);
+        var element3 = dom.childAt(fragment, [4, 1]);
+        var element4 = dom.childAt(fragment, [6]);
+        var morphs = new Array(8);
         morphs[0] = dom.createMorphAt(dom.childAt(element0, [3, 3]), 1, 1);
-        morphs[1] = dom.createMorphAt(dom.childAt(element2, [1]), 0, 0);
-        morphs[2] = dom.createMorphAt(dom.childAt(element2, [3]), 0, 0);
-        morphs[3] = dom.createMorphAt(dom.childAt(element3, [1]), 1, 1);
-        morphs[4] = dom.createMorphAt(dom.childAt(element4, [1]), 0, 0);
-        morphs[5] = dom.createElementMorph(element5);
-        morphs[6] = dom.createMorphAt(fragment, 4, 4, contextualElement);
+        morphs[1] = dom.createMorphAt(dom.childAt(element1, [1]), 1, 1);
+        morphs[2] = dom.createElementMorph(element2);
+        morphs[3] = dom.createMorphAt(dom.childAt(fragment, [2]), 1, 1);
+        morphs[4] = dom.createElementMorph(element3);
+        morphs[5] = dom.createMorphAt(dom.childAt(element4, [1]), 0, 0);
+        morphs[6] = dom.createMorphAt(dom.childAt(element4, [3, 3, 1]), 1, 1);
+        morphs[7] = dom.createMorphAt(fragment, 8, 8, contextualElement);
         dom.insertBoundary(fragment, null);
         return morphs;
       },
-      statements: [["block", "link-to", ["home"], [], 0, null, ["loc", [null, [11, 37], [11, 79]]]], ["block", "link-to", ["home.post.new"], [], 1, null, ["loc", [null, [17, 20], [17, 71]]]], ["block", "link-to", ["home.profile"], [], 2, null, ["loc", [null, [18, 20], [18, 72]]]], ["content", "session.user.name", ["loc", [null, [23, 144], [23, 165]]]], ["block", "link-to", ["home.my-profile"], [], 3, null, ["loc", [null, [25, 28], [25, 80]]]], ["element", "action", ["logOut"], [], ["loc", [null, [26, 31], [26, 50]]]], ["content", "outlet", ["loc", [null, [37, 0], [37, 10]]]]],
+      statements: [["block", "link-to", ["home"], [], 0, null, ["loc", [null, [11, 37], [11, 79]]]], ["content", "session.user.name", ["loc", [null, [18, 144], [18, 165]]]], ["element", "action", ["logOut"], [], ["loc", [null, [20, 31], [20, 50]]]], ["inline", "ember-selectize", [], ["content", ["subexpr", "@mut", [["get", "countList", ["loc", [null, [30, 10], [30, 19]]]]], [], []], "selection", ["subexpr", "@mut", [["get", "selectedCount", ["loc", [null, [31, 12], [31, 25]]]]], [], []], "placeholder", "Select an item"], ["loc", [null, [29, 4], [32, 33]]]], ["element", "action", ["createSecretCode"], [], ["loc", [null, [36, 80], [36, 109]]]], ["content", "tableName", ["loc", [null, [40, 34], [40, 47]]]], ["block", "each", [["get", "model", ["loc", [null, [53, 20], [53, 25]]]]], [], 1, null, ["loc", [null, [53, 12], [60, 21]]]], ["content", "outlet", ["loc", [null, [66, 0], [66, 10]]]]],
       locals: [],
-      templates: [child0, child1, child2, child3]
+      templates: [child0, child1]
     };
   })());
 });
@@ -1515,232 +1557,6 @@ define("frontend/templates/home/post", ["exports"], function (exports) {
         return morphs;
       },
       statements: [["content", "outlet", ["loc", [null, [1, 0], [1, 10]]]]],
-      locals: [],
-      templates: []
-    };
-  })());
-});
-define("frontend/templates/home/post/edit", ["exports"], function (exports) {
-  exports["default"] = Ember.HTMLBars.template((function () {
-    return {
-      meta: {
-        "fragmentReason": {
-          "name": "triple-curlies"
-        },
-        "revision": "Ember@2.5.1",
-        "loc": {
-          "source": null,
-          "start": {
-            "line": 1,
-            "column": 0
-          },
-          "end": {
-            "line": 14,
-            "column": 6
-          }
-        },
-        "moduleName": "frontend/templates/home/post/edit.hbs"
-      },
-      isEmpty: false,
-      arity: 0,
-      cachedFragment: null,
-      hasRendered: false,
-      buildFragment: function buildFragment(dom) {
-        var el0 = dom.createDocumentFragment();
-        var el1 = dom.createElement("div");
-        dom.setAttribute(el1, "class", "form-group");
-        var el2 = dom.createTextNode("\n    ");
-        dom.appendChild(el1, el2);
-        var el2 = dom.createElement("label");
-        dom.setAttribute(el2, "for", "confirm");
-        dom.setAttribute(el2, "class", "cols-sm-2 control-label");
-        var el3 = dom.createTextNode("New Post");
-        dom.appendChild(el2, el3);
-        dom.appendChild(el1, el2);
-        var el2 = dom.createTextNode("\n    ");
-        dom.appendChild(el1, el2);
-        var el2 = dom.createElement("div");
-        dom.setAttribute(el2, "class", "cols-sm-10");
-        var el3 = dom.createTextNode("\n        ");
-        dom.appendChild(el2, el3);
-        var el3 = dom.createElement("div");
-        dom.setAttribute(el3, "class", "input-group");
-        var el4 = dom.createTextNode("\n            ");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createElement("span");
-        dom.setAttribute(el4, "class", "input-group-addon");
-        var el5 = dom.createElement("i");
-        dom.setAttribute(el5, "class", "fa fa-lock fa-lg");
-        dom.setAttribute(el5, "aria-hidden", "true");
-        dom.appendChild(el4, el5);
-        dom.appendChild(el3, el4);
-        var el4 = dom.createTextNode("\n          ");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createComment("");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createTextNode("\n        ");
-        dom.appendChild(el3, el4);
-        dom.appendChild(el2, el3);
-        var el3 = dom.createTextNode("\n        ");
-        dom.appendChild(el2, el3);
-        var el3 = dom.createElement("div");
-        dom.setAttribute(el3, "class", "input-group");
-        var el4 = dom.createTextNode("\n            ");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createElement("span");
-        dom.setAttribute(el4, "class", "input-group-addon");
-        var el5 = dom.createElement("i");
-        dom.setAttribute(el5, "class", "fa fa-lock fa-lg");
-        dom.setAttribute(el5, "aria-hidden", "true");
-        dom.appendChild(el4, el5);
-        dom.appendChild(el3, el4);
-        var el4 = dom.createTextNode("\n          ");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createComment("");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createTextNode("\n        ");
-        dom.appendChild(el3, el4);
-        dom.appendChild(el2, el3);
-        var el3 = dom.createTextNode("\n    ");
-        dom.appendChild(el2, el3);
-        dom.appendChild(el1, el2);
-        var el2 = dom.createTextNode("\n    ");
-        dom.appendChild(el1, el2);
-        var el2 = dom.createElement("button");
-        dom.setAttribute(el2, "type", "button");
-        dom.setAttribute(el2, "class", "btn btn-primary btn-lg login-button");
-        var el3 = dom.createTextNode("Update");
-        dom.appendChild(el2, el3);
-        dom.appendChild(el1, el2);
-        var el2 = dom.createTextNode("\n");
-        dom.appendChild(el1, el2);
-        dom.appendChild(el0, el1);
-        return el0;
-      },
-      buildRenderNodes: function buildRenderNodes(dom, fragment, contextualElement) {
-        var element0 = dom.childAt(fragment, [0]);
-        var element1 = dom.childAt(element0, [3]);
-        var element2 = dom.childAt(element0, [5]);
-        var morphs = new Array(3);
-        morphs[0] = dom.createMorphAt(dom.childAt(element1, [1]), 3, 3);
-        morphs[1] = dom.createMorphAt(dom.childAt(element1, [3]), 3, 3);
-        morphs[2] = dom.createElementMorph(element2);
-        return morphs;
-      },
-      statements: [["inline", "input", [], ["type", "text", "class", "form-control", "name", "title", "id", "title", "placeholder", "Title", "value", ["subexpr", "@mut", [["get", "post.title", ["loc", [null, [6, 102], [6, 112]]]]], [], []]], ["loc", [null, [6, 10], [6, 114]]]], ["inline", "input", [], ["type", "text", "class", "form-control", "name", "description", "id", "description", "placeholder", "Description", "value", ["subexpr", "@mut", [["get", "post.description", ["loc", [null, [10, 120], [10, 136]]]]], [], []]], ["loc", [null, [10, 10], [10, 138]]]], ["element", "action", ["updatePost", ["get", "post", ["loc", [null, [13, 92], [13, 96]]]]], [], ["loc", [null, [13, 70], [13, 98]]]]],
-      locals: [],
-      templates: []
-    };
-  })());
-});
-define("frontend/templates/home/post/new", ["exports"], function (exports) {
-  exports["default"] = Ember.HTMLBars.template((function () {
-    return {
-      meta: {
-        "fragmentReason": {
-          "name": "triple-curlies"
-        },
-        "revision": "Ember@2.5.1",
-        "loc": {
-          "source": null,
-          "start": {
-            "line": 1,
-            "column": 0
-          },
-          "end": {
-            "line": 14,
-            "column": 6
-          }
-        },
-        "moduleName": "frontend/templates/home/post/new.hbs"
-      },
-      isEmpty: false,
-      arity: 0,
-      cachedFragment: null,
-      hasRendered: false,
-      buildFragment: function buildFragment(dom) {
-        var el0 = dom.createDocumentFragment();
-        var el1 = dom.createElement("div");
-        dom.setAttribute(el1, "class", "form-group");
-        var el2 = dom.createTextNode("\n    ");
-        dom.appendChild(el1, el2);
-        var el2 = dom.createElement("label");
-        dom.setAttribute(el2, "for", "confirm");
-        dom.setAttribute(el2, "class", "cols-sm-2 control-label");
-        var el3 = dom.createTextNode("New Post");
-        dom.appendChild(el2, el3);
-        dom.appendChild(el1, el2);
-        var el2 = dom.createTextNode("\n    ");
-        dom.appendChild(el1, el2);
-        var el2 = dom.createElement("div");
-        dom.setAttribute(el2, "class", "cols-sm-10");
-        var el3 = dom.createTextNode("\n        ");
-        dom.appendChild(el2, el3);
-        var el3 = dom.createElement("div");
-        dom.setAttribute(el3, "class", "input-group");
-        var el4 = dom.createTextNode("\n            ");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createElement("span");
-        dom.setAttribute(el4, "class", "input-group-addon");
-        var el5 = dom.createElement("i");
-        dom.setAttribute(el5, "class", "fa fa-lock fa-lg");
-        dom.setAttribute(el5, "aria-hidden", "true");
-        dom.appendChild(el4, el5);
-        dom.appendChild(el3, el4);
-        var el4 = dom.createTextNode("\n          ");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createComment("");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createTextNode("\n        ");
-        dom.appendChild(el3, el4);
-        dom.appendChild(el2, el3);
-        var el3 = dom.createTextNode("\n        ");
-        dom.appendChild(el2, el3);
-        var el3 = dom.createElement("div");
-        dom.setAttribute(el3, "class", "input-group");
-        var el4 = dom.createTextNode("\n            ");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createElement("span");
-        dom.setAttribute(el4, "class", "input-group-addon");
-        var el5 = dom.createElement("i");
-        dom.setAttribute(el5, "class", "fa fa-lock fa-lg");
-        dom.setAttribute(el5, "aria-hidden", "true");
-        dom.appendChild(el4, el5);
-        dom.appendChild(el3, el4);
-        var el4 = dom.createTextNode("\n          ");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createComment("");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createTextNode("\n        ");
-        dom.appendChild(el3, el4);
-        dom.appendChild(el2, el3);
-        var el3 = dom.createTextNode("\n    ");
-        dom.appendChild(el2, el3);
-        dom.appendChild(el1, el2);
-        var el2 = dom.createTextNode("\n    ");
-        dom.appendChild(el1, el2);
-        var el2 = dom.createElement("button");
-        dom.setAttribute(el2, "type", "button");
-        dom.setAttribute(el2, "class", "btn btn-primary btn-lg login-button");
-        var el3 = dom.createTextNode("Create");
-        dom.appendChild(el2, el3);
-        dom.appendChild(el1, el2);
-        var el2 = dom.createTextNode("\n");
-        dom.appendChild(el1, el2);
-        dom.appendChild(el0, el1);
-        return el0;
-      },
-      buildRenderNodes: function buildRenderNodes(dom, fragment, contextualElement) {
-        var element0 = dom.childAt(fragment, [0]);
-        var element1 = dom.childAt(element0, [3]);
-        var element2 = dom.childAt(element0, [5]);
-        var morphs = new Array(3);
-        morphs[0] = dom.createMorphAt(dom.childAt(element1, [1]), 3, 3);
-        morphs[1] = dom.createMorphAt(dom.childAt(element1, [3]), 3, 3);
-        morphs[2] = dom.createElementMorph(element2);
-        return morphs;
-      },
-      statements: [["inline", "input", [], ["type", "text", "class", "form-control", "name", "title", "id", "title", "placeholder", "Title", "value", ["subexpr", "@mut", [["get", "post.title", ["loc", [null, [6, 102], [6, 112]]]]], [], []]], ["loc", [null, [6, 10], [6, 114]]]], ["inline", "input", [], ["type", "text", "class", "form-control", "name", "description", "id", "description", "placeholder", "Description", "value", ["subexpr", "@mut", [["get", "post.description", ["loc", [null, [10, 120], [10, 136]]]]], [], []]], ["loc", [null, [10, 10], [10, 138]]]], ["element", "action", ["createPost", ["get", "post", ["loc", [null, [13, 92], [13, 96]]]]], [], ["loc", [null, [13, 70], [13, 98]]]]],
       locals: [],
       templates: []
     };
@@ -2321,11 +2137,11 @@ define("frontend/templates/sign_up", ["exports"], function (exports) {
           "loc": {
             "source": null,
             "start": {
-              "line": 85,
+              "line": 82,
               "column": 16
             },
             "end": {
-              "line": 85,
+              "line": 82,
               "column": 43
             }
           },
@@ -2362,7 +2178,7 @@ define("frontend/templates/sign_up", ["exports"], function (exports) {
             "column": 0
           },
           "end": {
-            "line": 90,
+            "line": 87,
             "column": 0
           }
         },
@@ -2546,7 +2362,7 @@ define("frontend/templates/sign_up", ["exports"], function (exports) {
         var el5 = dom.createElement("label");
         dom.setAttribute(el5, "for", "username");
         dom.setAttribute(el5, "class", "cols-sm-2 control-label");
-        var el6 = dom.createTextNode("Username");
+        var el6 = dom.createTextNode("Secret Code");
         dom.appendChild(el5, el6);
         dom.appendChild(el4, el5);
         var el5 = dom.createTextNode("\n                ");
@@ -2570,7 +2386,7 @@ define("frontend/templates/sign_up", ["exports"], function (exports) {
         dom.appendChild(el6, el7);
         var el7 = dom.createComment("");
         dom.appendChild(el6, el7);
-        var el7 = dom.createTextNode("\n                    ");
+        var el7 = dom.createTextNode("\n\n                    ");
         dom.appendChild(el6, el7);
         dom.appendChild(el5, el6);
         var el6 = dom.createTextNode("\n                ");
@@ -2579,49 +2395,7 @@ define("frontend/templates/sign_up", ["exports"], function (exports) {
         var el5 = dom.createTextNode("\n            ");
         dom.appendChild(el4, el5);
         dom.appendChild(el3, el4);
-        var el4 = dom.createTextNode("\n\n            ");
-        dom.appendChild(el3, el4);
-        var el4 = dom.createElement("div");
-        dom.setAttribute(el4, "class", "form-group");
-        var el5 = dom.createTextNode("\n                ");
-        dom.appendChild(el4, el5);
-        var el5 = dom.createElement("label");
-        dom.setAttribute(el5, "for", "firstname");
-        dom.setAttribute(el5, "class", "cols-sm-2 control-label");
-        var el6 = dom.createTextNode("Contact Number");
-        dom.appendChild(el5, el6);
-        dom.appendChild(el4, el5);
-        var el5 = dom.createTextNode("\n                ");
-        dom.appendChild(el4, el5);
-        var el5 = dom.createElement("div");
-        dom.setAttribute(el5, "class", "cols-sm-10");
-        var el6 = dom.createTextNode("\n                    ");
-        dom.appendChild(el5, el6);
-        var el6 = dom.createElement("div");
-        dom.setAttribute(el6, "class", "input-group");
-        var el7 = dom.createTextNode("\n                        ");
-        dom.appendChild(el6, el7);
-        var el7 = dom.createElement("span");
-        dom.setAttribute(el7, "class", "input-group-addon");
-        var el8 = dom.createElement("i");
-        dom.setAttribute(el8, "class", "fa fa-user fa");
-        dom.setAttribute(el8, "aria-hidden", "true");
-        dom.appendChild(el7, el8);
-        dom.appendChild(el6, el7);
-        var el7 = dom.createTextNode("\n                        ");
-        dom.appendChild(el6, el7);
-        var el7 = dom.createComment("");
-        dom.appendChild(el6, el7);
-        var el7 = dom.createTextNode("\n                    ");
-        dom.appendChild(el6, el7);
-        dom.appendChild(el5, el6);
-        var el6 = dom.createTextNode("\n                ");
-        dom.appendChild(el5, el6);
-        dom.appendChild(el4, el5);
-        var el5 = dom.createTextNode("\n            ");
-        dom.appendChild(el4, el5);
-        dom.appendChild(el3, el4);
-        var el4 = dom.createTextNode("\n\n            ");
+        var el4 = dom.createTextNode("\n\n\n            ");
         dom.appendChild(el3, el4);
         var el4 = dom.createElement("div");
         dom.setAttribute(el4, "class", "form-group");
@@ -2746,20 +2520,19 @@ define("frontend/templates/sign_up", ["exports"], function (exports) {
       },
       buildRenderNodes: function buildRenderNodes(dom, fragment, contextualElement) {
         var element0 = dom.childAt(fragment, [0, 3, 1]);
-        var element1 = dom.childAt(element0, [15, 1]);
-        var morphs = new Array(9);
+        var element1 = dom.childAt(element0, [13, 1]);
+        var morphs = new Array(8);
         morphs[0] = dom.createMorphAt(dom.childAt(element0, [1, 3, 1]), 3, 3);
         morphs[1] = dom.createMorphAt(dom.childAt(element0, [3, 3, 1]), 3, 3);
         morphs[2] = dom.createMorphAt(dom.childAt(element0, [5, 3, 1]), 3, 3);
         morphs[3] = dom.createMorphAt(dom.childAt(element0, [7, 3, 1]), 3, 3);
         morphs[4] = dom.createMorphAt(dom.childAt(element0, [9, 3, 1]), 3, 3);
         morphs[5] = dom.createMorphAt(dom.childAt(element0, [11, 3, 1]), 3, 3);
-        morphs[6] = dom.createMorphAt(dom.childAt(element0, [13, 3, 1]), 3, 3);
-        morphs[7] = dom.createElementMorph(element1);
-        morphs[8] = dom.createMorphAt(dom.childAt(element0, [17]), 1, 1);
+        morphs[6] = dom.createElementMorph(element1);
+        morphs[7] = dom.createMorphAt(dom.childAt(element0, [15]), 1, 1);
         return morphs;
       },
-      statements: [["inline", "input", [], ["type", "text", "class", "form-control", "name", "firstname", "id", "firstname", "placeholder", "Enter your First Name", "value", ["subexpr", "@mut", [["get", "firstname", ["loc", [null, [16, 140], [16, 149]]]]], [], []]], ["loc", [null, [16, 24], [16, 151]]]], ["inline", "input", [], ["type", "text", "class", "form-control", "name", "lastname", "id", "lastname", "placeholder", "Enter your Last Name", "value", ["subexpr", "@mut", [["get", "lastname", ["loc", [null, [26, 135], [26, 143]]]]], [], []]], ["loc", [null, [26, 22], [26, 145]]]], ["inline", "input", [], ["type", "text", "class", "form-control", "name", "email", "id", "email", "placeholder", "Enter your Email", "value", ["subexpr", "@mut", [["get", "email", ["loc", [null, [36, 127], [36, 132]]]]], [], []]], ["loc", [null, [36, 24], [36, 134]]]], ["inline", "input", [], ["type", "text", "class", "form-control", "name", "username", "id", "username", "placeholder", "Enter your Username", "value", ["subexpr", "@mut", [["get", "username", ["loc", [null, [46, 136], [46, 144]]]]], [], []]], ["loc", [null, [46, 24], [46, 146]]]], ["inline", "input", [], ["type", "number", "class", "form-control", "name", "contactNumber", "id", "contactNumber", "placeholder", "Enter your Contact Number", "value", ["subexpr", "@mut", [["get", "contactNumber", ["loc", [null, [56, 154], [56, 167]]]]], [], []]], ["loc", [null, [56, 24], [56, 169]]]], ["inline", "input", [], ["type", "password", "class", "form-control", "name", "password", "id", "password", "placeholder", "Enter your Password", "value", ["subexpr", "@mut", [["get", "password", ["loc", [null, [66, 140], [66, 148]]]]], [], []]], ["loc", [null, [66, 24], [66, 150]]]], ["inline", "input", [], ["type", "password", "class", "form-control", "name", "confirm", "id", "confirm", "placeholder", "Confirm your Password", "value", ["subexpr", "@mut", [["get", "confirmPassword", ["loc", [null, [76, 140], [76, 155]]]]], [], []]], ["loc", [null, [76, 24], [76, 157]]]], ["element", "action", ["signup"], [], ["loc", [null, [82, 92], [82, 111]]]], ["block", "link-to", ["sign_in"], [], 0, null, ["loc", [null, [85, 16], [85, 55]]]]],
+      statements: [["inline", "input", [], ["type", "text", "class", "form-control", "name", "firstname", "id", "firstname", "placeholder", "Enter your First Name", "value", ["subexpr", "@mut", [["get", "firstname", ["loc", [null, [16, 140], [16, 149]]]]], [], []]], ["loc", [null, [16, 24], [16, 151]]]], ["inline", "input", [], ["type", "text", "class", "form-control", "name", "lastname", "id", "lastname", "placeholder", "Enter your Last Name", "value", ["subexpr", "@mut", [["get", "lastname", ["loc", [null, [26, 135], [26, 143]]]]], [], []]], ["loc", [null, [26, 22], [26, 145]]]], ["inline", "input", [], ["type", "text", "class", "form-control", "name", "email", "id", "email", "placeholder", "Enter your Email", "value", ["subexpr", "@mut", [["get", "email", ["loc", [null, [36, 127], [36, 132]]]]], [], []]], ["loc", [null, [36, 24], [36, 134]]]], ["inline", "ember-selectize", [], ["content", ["subexpr", "@mut", [["get", "secretCodeList", ["loc", [null, [47, 34], [47, 48]]]]], [], []], "optionValuePath", "content.id", "optionLabelPath", "content.name", "selection", ["subexpr", "@mut", [["get", "selectedSecret", ["loc", [null, [50, 36], [50, 50]]]]], [], []], "placeholder", "Select an item"], ["loc", [null, [46, 24], [51, 57]]]], ["inline", "input", [], ["type", "password", "class", "form-control", "name", "password", "id", "password", "placeholder", "Enter your Password", "value", ["subexpr", "@mut", [["get", "password", ["loc", [null, [63, 140], [63, 148]]]]], [], []]], ["loc", [null, [63, 24], [63, 150]]]], ["inline", "input", [], ["type", "password", "class", "form-control", "name", "confirm", "id", "confirm", "placeholder", "Confirm your Password", "value", ["subexpr", "@mut", [["get", "confirmPassword", ["loc", [null, [73, 140], [73, 155]]]]], [], []]], ["loc", [null, [73, 24], [73, 157]]]], ["element", "action", ["signup"], [], ["loc", [null, [79, 92], [79, 111]]]], ["block", "link-to", ["sign_in"], [], 0, null, ["loc", [null, [82, 16], [82, 55]]]]],
       locals: [],
       templates: [child0]
     };
@@ -2797,7 +2570,7 @@ catch(err) {
 /* jshint ignore:start */
 
 if (!runningTests) {
-  require("frontend/app")["default"].create({"name":"frontend","version":"0.0.0+c6b3e88c"});
+  require("frontend/app")["default"].create({"name":"frontend","version":"0.0.0+047cfc00"});
 }
 
 /* jshint ignore:end */

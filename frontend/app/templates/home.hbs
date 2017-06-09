@@ -13,16 +13,10 @@
 
         <!-- Collect the nav links, forms, and other content for toggling -->
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-            <ul class="nav navbar-nav">
-                <li>{{#link-to 'home.post.new'}}Create Post{{/link-to}}</li>
-                <li>{{#link-to 'home.profile'}}User Profiles{{/link-to}}</li>
-            </ul>
-
             <ul class="nav navbar-nav navbar-right">
                 <li class="dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Welcome {{session.user.name}}<span class="caret"></span></a>
                     <ul class="dropdown-menu">
-                        <li>{{#link-to 'home.my-profile'}}My Profile{{/link-to}} </li>
                         <li><a {{action 'logOut'}}>Log Out</a></li>
                     </ul>
                 </li>
@@ -31,7 +25,42 @@
     </div><!-- /.container-fluid -->
 </nav>
 
-<div class="col-md-12">
-    Hello!  This blog is designed for those of you like me, who oddly enough, love planning things!  Anything from concerts, to weddings, parties, and fundraisers have some of the same key elements, and are just as fun to create.  The blog will be geared to newbies hoping to learn some tips or experienced event planners looking to brush up on the theory.  Events and Everyday Catostrophes will use my experiences planning the University of Rhode Island Senior sendoff as well as working in the Programming Office of the university to provide (hopefully) entertaining anecdotes to help connect with skills and ideas to help you run your own events.
+<div class="col-md-4 noPadding mt20">
+    {{ember-selectize
+  content=countList
+  selection=selectedCount
+  placeholder="Select an item" }}
 </div>
+
+<div class="form-group col-md-3">
+    <button type="button" class="btn btn-primary btn-lg btn-block login-button" {{action 'createSecretCode'}}>Create Secret Code</button>
+</div>
+
+<div class="col-md-12 noPadding mt20">
+  <div class="centered bold-text">{{tableName}}</div>
+  <div class="col-md-12 white-bg mt20">
+    <div class="row table-header-scorecard-pattern noMargin col-md-12">
+        <div class="col-md-6 full-row-height45 report-header centered">
+            Secret Code
+        </div>
+        <div class="col-md-6 full-row-height45 report-header centered">
+            Email
+        </div>
+    </div>
+
+    <div class = "noPadding">
+        <div class="col-md-12 row noMargin hover bt1">
+            {{#each model as |rec|}}
+                <div class="full-row-height45 col-md-6 centered">
+                  {{rec.name}}
+                </div>
+                <div class="full-row-height45 col-md-6 centered">
+                  ({{rec.user.email}})
+                </div>
+            {{/each}}    
+        </div>
+    </div>
+  </div>
+</div>
+
 {{outlet}}

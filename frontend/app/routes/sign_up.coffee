@@ -8,20 +8,18 @@ signUpRoute = Ember.Route.extend
       @transitionTo('sign_up')
 
   model: ->
-   []
+    @store.query('secret-code', {unutilized: true})
 
   setupController: (controller,model)->
-    controller.set('model', model)
+    controller.set('secretCodeList', model)
 
    actions:
     signup: ->
-      if Ember.isEqual(@controller.get('password'), @controller.get('confirmPassword'))
+      if Ember.isEqual(@controller.get('password'), @controller.get('confirmPassword')) and Ember.isPresent(@controller.get('selectedSecret'))
         userObj = {
           firstname: @controller.get('firstname')
           lastname: @controller.get('lastname')
           email: @controller.get('email')
-          contactNumber: @controller.get('contactNumber')
-          username: @controller.get('username')
           password: @controller.get('password')
           confirmPassword: @controller.get('confirmPassword')
         }
@@ -30,6 +28,11 @@ signUpRoute = Ember.Route.extend
           alert "User Created"
           if Ember.isPresent(response)
             @get('session').set('user', response)
+            @store.findRecord('secret-code', @controller.get('selectedSecret.id')).then ((secretCode) =>
+              secretCode.set('user', response)
+              debugger
+              secretCode.save()
+            )
             @transitionTo('home')
         )
        else
